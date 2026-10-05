@@ -10,7 +10,7 @@
 @media(prefers-color-scheme:dark){:root{--bg:#101B1A;--card:#182726;--ink:#E8F0EE;--mute:#9DB1AD;--line:#2A3D3B;--acc:#3CC4B5;--on:#06201D;--new:#FB923C;--prep:#F2C94C;--ready:#3CC4B5}}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,'Noto Sans Devanagari',sans-serif}
 button{font:inherit;cursor:pointer;border:0;color:inherit}main{max-width:720px;margin:0 auto;padding:14px}h1,h2{margin:0}
-.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px}
+.top h1{font-size:22px}.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px}
 input{width:100%;font:inherit;padding:11px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);margin-bottom:8px}
 .btn{background:var(--acc);color:var(--on);border-radius:12px;padding:13px;font-weight:600;width:100%;margin-bottom:10px}
 .vbtn{width:100%;padding:14px;border-radius:12px;background:var(--card);border:2px solid var(--acc);font-weight:600;font-size:17px;margin-bottom:12px}.vbtn.on{background:var(--acc);color:var(--on)}
@@ -25,8 +25,8 @@ ul{list-style:none;margin:8px 0;padding:0}li{display:flex;justify-content:space-
 footer{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
 .next{background:var(--ink);color:var(--bg);border-radius:10px;padding:12px 20px;font-size:18px;font-weight:600}.ord.new .next{background:var(--ready);color:var(--on)}
 .rep{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-weight:600}
-.mrow{display:grid;grid-template-columns:1fr 70px auto auto auto;gap:6px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 10px;margin-bottom:8px}
-.mrow input{margin:0;padding:8px}.tg{background:var(--acc);color:var(--on);border-radius:10px;padding:9px 10px;font-weight:600}.tg.off{background:var(--new)}
+.mrow{display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 10px;margin-bottom:8px}.mrow>div{min-width:0}
+.tg{background:var(--acc);color:var(--on);border-radius:10px;padding:10px 12px;font-weight:600;min-width:96px;flex:none}.tg.off{background:var(--new)}
 .hint{color:var(--mute);font-size:14px;margin:2px 0}.err{color:var(--new)}.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:10px}
 #pr{display:none}@media print{main{display:none}#pr{display:block;width:58mm;font:14px monospace;color:#000;background:#fff}}
 </style>
@@ -35,7 +35,7 @@ footer{display:flex;justify-content:space-between;align-items:center;gap:8px;fle
 <main id="app"></main><div id="pr"></div>
 <script type="module">
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import {getFirestore,collection,doc,onSnapshot,updateDoc,addDoc,deleteDoc,getDocs,increment,query,where,orderBy} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import {getFirestore,collection,doc,onSnapshot,updateDoc,setDoc,getDocs,increment,query,where,orderBy} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import {getAuth,signInWithEmailAndPassword,onAuthStateChanged,signOut} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 // ===== CONFIG: har cafe ke liye sirf yeh hissa badlein =====
 const CFG={cafeName:'Brew & Bite'};
@@ -49,13 +49,23 @@ const IC={new:'🔴 नया',prep:'🟡 बन रहा',ready:'🟢 तै�
 const NEXT={new:['prep','✅ स्वीकार'],prep:['ready','🟢 तैयार'],ready:['done','🍽️ सर्व हुआ']};
 const NUM=['शून्य','एक','दो','तीन','चार','पाँच','छह','सात','आठ','नौ','दस'];const num=n=>NUM[+n]||String(n);
 const tn=t=>t==='parcel'?'पार्सल ऑर्डर':'टेबल नंबर '+num(t);const tl=t=>t==='parcel'?'🥡 PARCEL':'Table '+t;
-const SEED=[['Coffee','Cappuccino','कैपुचीनो',150],['Coffee','Cold Coffee','कोल्ड कॉफ़ी',180],['Coffee','Masala Chai','मसाला चाय',70],['Pizza','Margherita Pizza','मार्गरीटा पिज़्ज़ा',299],['Pizza','Paneer Tikka Pizza','पनीर टिक्का पिज़्ज़ा',349],['Snacks','Veg Sandwich','वेज सैंडविच',120],['Snacks','French Fries','फ्रेंच फ्राइज़',110],['Dessert','Brownie','ब्राउनी',140]];
-let calls=[],uc=null,firstC=true,orders=[],menu=[],voiceOn=false,wl=null,first=true,uo=null,um=null,msg='',user=null,tab='o',showDone=false,sum=null;
+// ===== MENU: har cafe ke liye yeh list badlein. id = chhota lowercase naam (baad mein kabhi na badlein). =====
+// Optional fields: d:'description', img:'file.jpg' (images/ folder mein), fav:true. KITCHEN WALI FILE MEIN BILKUL YAHI LIST RAKHEIN.
+const MENU=[
+{id:'cappuccino',c:'Coffee',n:'Cappuccino',h:'कैपुचीनो',p:150},
+{id:'cold-coffee',c:'Coffee',n:'Cold Coffee',h:'कोल्ड कॉफ़ी',p:180},
+{id:'masala-chai',c:'Coffee',n:'Masala Chai',h:'मसाला चाय',p:70},
+{id:'margherita-pizza',c:'Pizza',n:'Margherita Pizza',h:'मार्गरीटा पिज़्ज़ा',p:299},
+{id:'paneer-tikka-pizza',c:'Pizza',n:'Paneer Tikka Pizza',h:'पनीर टिक्का पिज़्ज़ा',p:349},
+{id:'veg-sandwich',c:'Snacks',n:'Veg Sandwich',h:'वेज सैंडविच',p:120},
+{id:'french-fries',c:'Snacks',n:'French Fries',h:'फ्रेंच फ्राइज़',p:110},
+{id:'brownie',c:'Dessert',n:'Brownie',h:'ब्राउनी',p:140}];
+let lastEm='',calls=[],uc=null,firstC=true,orders=[],AV={},merr='',sent=new Set(),voiceOn=false,wl=null,first=true,uo=null,um=null,msg='',user=null,tab='o',showDone=false,sum=null;
 
 function beep(){try{const a=new (window.AudioContext||window.webkitAudioContext)(),o=a.createOscillator(),g=a.createGain();o.connect(g);g.connect(a.destination);o.frequency.value=880;g.gain.setValueAtTime(.15,a.currentTime);g.gain.exponentialRampToValueAtTime(.001,a.currentTime+.4);o.start();o.stop(a.currentTime+.4)}catch(e){}}
 function say(t){if(!('speechSynthesis' in window))return;const u=new SpeechSynthesisUtterance(t);u.lang='hi-IN';u.rate=.9;const v=speechSynthesis.getVoices().find(v=>v.lang&&v.lang.toLowerCase().startsWith('hi'));if(v)u.voice=v;speechSynthesis.speak(u)}
 function speak(o){say(`${tn(o.table)}। ${o.items.map(i=>num(i.q)+' '+(i.h||i.n)).join(', ')}। ${num(o.people)} लोग।${o.note?' नोट: '+o.note+'।':''} जल्दी तैयार करो।`)}
-async function toggleVoice(){voiceOn=!voiceOn;if(voiceOn){say('आवाज़ चालू है');try{wl=await navigator.wakeLock.request('screen')}catch(e){}}else{speechSynthesis.cancel();try{wl&&wl.release()}catch(e){}}render()}
+async function toggleVoice(){voiceOn=!voiceOn;if(voiceOn){say('आवाज़ चालू है');try{wl=await navigator.wakeLock.request('screen')}catch(e){}}else{if('speechSynthesis' in window)speechSynthesis.cancel();try{wl&&wl.release()}catch(e){}}render()}
 document.addEventListener('visibilitychange',async()=>{if(voiceOn&&!document.hidden){try{wl=await navigator.wakeLock.request('screen')}catch(e){}}});
 setInterval(()=>{if(!voiceOn)return;const p=orders.filter(o=>o.status==='new');if(p.length)say('ध्यान दें। '+p.map(o=>tn(o.table)).join(', ')+' का नया ऑर्डर स्वीकार करें।')},30000);
 function printKot(o){$('#pr').innerHTML=`<b>${esc(CFG.cafeName)}</b><br>${o.table==='parcel'?'PARCEL':'TABLE '+esc(o.table)} - ${esc(o.name)}<br>${o.people} log, ${new Date(o.t).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}<hr>${o.items.map(i=>i.q+' x '+esc(i.n)).join('<br>')}<hr>${o.note?'NOTE: '+esc(o.note)+'<hr>':''}#${o.id.slice(-4)}`;window.print()}
@@ -63,21 +73,20 @@ async function loadSum(){try{const d=new Date();d.setHours(0,0,0,0);const s=awai
   const all=s.docs.map(x=>x.data()).filter(o=>o.status!=='cancel'),cnt={};let rev=0;all.forEach(o=>{rev+=o.total;o.items.forEach(i=>cnt[i.n]=(cnt[i.n]||0)+i.q)});
   sum={n:all.length,c:s.size-all.length,rev,top:Object.entries(cnt).sort((a,b)=>b[1]-a[1]).slice(0,5)};msg=''}catch(e){msg='Sarankh load nahi hua: '+e.code}render()}
 
-onAuthStateChanged(auth,u=>{user=u;[uo,um,uc].forEach(f=>f&&f());uo=um=uc=null;orders=[];menu=[];calls=[];first=true;firstC=true;
+onAuthStateChanged(auth,u=>{user=u;[uo,um,uc].forEach(f=>f&&f());uo=um=uc=null;orders=[];AV={};calls=[];first=true;firstC=true;
   if(u){
     uo=onSnapshot(query(collection(db,'orders'),where('t','>',Date.now()-4*3600e3),orderBy('t','desc')),snap=>{
       if(!first)snap.docChanges().forEach(ch=>{const o={id:ch.doc.id,...ch.doc.data()};
         if(ch.type==='added')voiceOn?speak(o):beep();
         if(ch.type==='modified'&&o.status==='cancel')voiceOn?say(`${tn(o.table)} का ऑर्डर रद्द हुआ।`):beep()});
       first=false;orders=snap.docs.map(d=>({id:d.id,...d.data()}));msg='';render()},e=>{msg='Orders load nahi hue: '+e.code;render()});
-    um=onSnapshot(collection(db,'menu'),s=>{menu=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.o||0)-(b.o||0));
-      if(tab==='m'&&!(document.activeElement&&document.activeElement.tagName==='INPUT'))render()},()=>{});
-    uc=onSnapshot(query(collection(db,'calls'),where('status','==','open')),sn=>{if(!firstC)sn.docChanges().forEach(ch=>{if(ch.type==='added'){voiceOn?say(tn(ch.doc.data().table)+' बुला रहा है।'):beep()}});firstC=false;calls=sn.docs.map(d=>({id:d.id,...d.data()}));render()},()=>{})}
+    um=onSnapshot(collection(db,'menu'),s=>{AV={};s.docs.forEach(d=>{AV[d.id]=d.data()});merr='';if(tab==='m')render()},e=>{merr='Menu ki sthiti nahi padh paye: '+e.code;if(tab==='m')render()});
+    uc=onSnapshot(query(collection(db,'calls'),where('status','==','open')),sn=>{if(!firstC)sn.docChanges().forEach(ch=>{if(ch.type==='added'){voiceOn?say(tn(ch.doc.data().table)+' बुला रहा है।'):beep()}});firstC=false;calls=sn.docs.map(d=>({id:d.id,...d.data()}));render()},e=>{msg='Waiter calls nahi padh paye: '+e.code;render()})}
   render()});
 
 function render(){const a=$('#app');
-  if(!user){a.innerHTML=`<h1>Kitchen login</h1><p class="hint">Sirf cafe staff ke liye.</p><input id="em" type="email" placeholder="Email" autocomplete="username"><input id="pw" type="password" placeholder="Password" autocomplete="current-password"><button class="btn" id="li">Login</button><p class="err">${esc(msg)}</p>`;
-    $('#li').onclick=async()=>{try{await signInWithEmailAndPassword(auth,$('#em').value.trim(),$('#pw').value)}catch(e){msg='Login nahi hua. Email ya password galat hai.';render()}};return}
+  if(!user){a.innerHTML=`<h1>Kitchen login</h1><p class="hint">Sirf cafe staff ke liye.</p><input id="em" type="email" placeholder="Email" autocomplete="username" value="${esc(lastEm)}"><input id="pw" type="password" placeholder="Password" autocomplete="current-password"><button class="btn" id="li">Login</button><p class="err">${esc(msg)}</p>`;
+    const go=async()=>{lastEm=$('#em').value.trim();try{await signInWithEmailAndPassword(auth,lastEm,$('#pw').value);msg=''}catch(e){const c=e&&e.code||'';msg=c==='auth/network-request-failed'?'Internet nahi chal raha. Check karke dobara try karein.':c==='auth/too-many-requests'?'Bahut baar galat try kiya. Kuch der baad dobara try karein.':'Login nahi hua. Email ya password galat hai.'+(c?' ('+c+')':'');render()}};$('#li').onclick=go;$('#pw').onkeydown=e=>{if(e.key==='Enter')go()};return}
   const nn=orders.filter(o=>o.status==='new').length;
   let body='';
   if(tab==='o'){
@@ -89,10 +98,8 @@ function render(){const a=$('#app');
     <footer><b>Total ₹${o.total}</b><span style="display:flex;gap:8px;flex-wrap:wrap"><button class="rep" data-k="${o.id}">🖨️</button>${o.status==='cancel'?'':`<button class="rep" data-r="${o.id}">🔊</button>`}${NEXT[o.status]?`<button class="next" data-o="${o.id}">${NEXT[o.status][1]}</button>`:''}</span></footer></article>`).join(''):'<p class="hint">Abhi koi chalu order nahi.</p>')+
     (hid||showDone?`<button class="rep" id="sd" style="width:100%">${showDone?'पूरे हुए छिपाएँ':'पूरे हुए orders दिखाएँ ('+hid+')'}</button>`:'')+'<p class="hint">Sirf pichhle 4 ghante ke orders dikhte hain.</p>'
   }else if(tab==='m'){
-    body=(menu.length?'':'<button class="btn" id="seed">नमूना menu डालें</button>')+
-    `<p class="hint">दाम बदलने के लिए नंबर बदलिए। "खत्म" दबाने पर item customer के menu से हट जाएगा। ⭐ लगाने पर item "सबसे ज़्यादा पसंद" में हमेशा दिखेगा।</p>`+
-    menu.map(m=>`<div class="mrow"><div><b>${esc(m.n)}</b><div class="hint">${esc(m.c)}</div><input data-im="${m.id}" placeholder="फ़ोटो: pizza.jpg" value="${esc(m.img||'')}" style="font-size:12px;padding:5px;margin-top:4px"></div><input type="number" value="${m.p}" data-pr="${m.id}"><button class="rep" data-fv="${m.id}">${m.fav?'⭐':'☆'}</button><button class="tg ${m.on===false?'off':''}" data-tg="${m.id}">${m.on===false?'⛔ खत्म':'✅ है'}</button><button class="rep" data-del="${m.id}">🗑</button></div>`).join('')+
-    `<div class="card"><h2 style="font-size:18px;margin-bottom:8px">नया item जोड़ें</h2><input id="an" placeholder="नाम (English)"><input id="ah" placeholder="हिंदी नाम (आवाज़ के लिए)"><input id="ac" placeholder="Category (जैसे Coffee)"><input id="ai" placeholder="फ़ोटो का नाम (जैसे pizza.jpg), optional"><input id="ap" type="number" placeholder="दाम"><button class="btn" id="add" style="margin:0">जोड़ें</button></div>`
+    body=`<p class="hint">"खत्म" दबाने पर item customer के menu से हट जाएगा। "✅ है" दबाने पर वापस आ जाएगा।</p>`+(merr?`<p class="err">${esc(merr)}</p>`:'')+
+    [...new Set(MENU.map(m=>m.c))].map(c=>`<h2 style="font-size:17px;margin:12px 0 6px">${esc(c)}</h2>`+MENU.filter(m=>m.c===c).map(m=>{const on=(AV[m.id]||{}).on!==false;return `<div class="mrow"><div><b>${esc(m.n)}</b><div class="hint">₹${m.p}</div></div><button class="tg ${on?'':'off'}" data-tg="${esc(m.id)}">${on?'✅ है':'⛔ खत्म'}</button></div>`}).join('')).join('')
   }else{
     body=`<button class="btn" id="ls">आज का सारांश लाएँ</button>`+(sum?`<div class="card"><h2>आज</h2><p>Orders: <b>${sum.n}</b> (रद्द: ${sum.c})</p><p>कुल बिक्री: <b>₹${sum.rev}</b></p><p><b>सबसे ज़्यादा बिके:</b></p>${sum.top.map(([n,q])=>`<div>${esc(n)}: ${q}</div>`).join('')||'<div class="hint">अभी कुछ नहीं</div>'}</div>`:'<p class="hint">यह सिर्फ़ दबाने पर पढ़ता है, ताकि free सीमा बची रहे।</p>')
   }
@@ -104,18 +111,12 @@ function render(){const a=$('#app');
   on('#vb',toggleVoice);on('#sd',()=>{showDone=!showDone;render()});on('#ls',loadSum);
   a.querySelectorAll('[data-r]').forEach(b=>b.onclick=()=>speak(orders.find(x=>x.id===b.dataset.r)));
   a.querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>printKot(orders.find(x=>x.id===b.dataset.k)));
-  a.querySelectorAll('[data-o]').forEach(b=>b.onclick=async()=>{const o=orders.find(x=>x.id===b.dataset.o);
-    const nx=NEXT[o.status][0];try{await updateDoc(doc(db,'orders',o.id),{status:nx})}catch(e){msg='Status badal nahi paya (shayad customer ne cancel kar diya).';render();return}
-    if(nx==='done')for(const i of o.items){const m=menu.find(x=>x.id===i.id)||menu.find(x=>x.n===i.n);if(m)try{await updateDoc(doc(db,'menu',m.id),{sold:increment(i.q)})}catch(e){}}});
-  on('#seed',async()=>{try{for(let i=0;i<SEED.length;i++){const [c,n,h,p]=SEED[i];await addDoc(collection(db,'menu'),{c,n,h,p,d:'',on:true,o:i})}}catch(e){msg='Menu nahi ban paya: '+e.code;render()}});
-  a.querySelectorAll('[data-pr]').forEach(i=>i.onchange=async()=>{const p=+i.value;if(p>0)try{await updateDoc(doc(db,'menu',i.dataset.pr),{p})}catch(e){msg='Dam nahi badla: '+e.code;render()}});
-  a.querySelectorAll('[data-tg]').forEach(b=>b.onclick=async()=>{const m=menu.find(x=>x.id===b.dataset.tg);try{await updateDoc(doc(db,'menu',m.id),{on:m.on===false})}catch(e){msg='Badal nahi paya: '+e.code;render()}});
-  a.querySelectorAll('[data-cl]').forEach(b=>b.onclick=async()=>{try{await updateDoc(doc(db,'calls',b.dataset.cl),{status:'done'})}catch(e){}});
-  a.querySelectorAll('[data-im]').forEach(i=>i.onchange=async()=>{try{await updateDoc(doc(db,'menu',i.dataset.im),{img:i.value.trim()})}catch(e){msg='Photo nahi juda: '+e.code;render()}});
-  a.querySelectorAll('[data-fv]').forEach(b=>b.onclick=async()=>{const m=menu.find(x=>x.id===b.dataset.fv);try{await updateDoc(doc(db,'menu',m.id),{fav:!m.fav})}catch(e){msg='Badal nahi paya: '+e.code;render()}});
-  a.querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{const m=menu.find(x=>x.id===b.dataset.del);if(confirm(m.n+' hatayein?'))try{await deleteDoc(doc(db,'menu',m.id))}catch(e){}});
-  on('#add',async()=>{const n=$('#an').value.trim(),c=$('#ac').value.trim(),p=+$('#ap').value;if(!n||!c||!(p>0)){msg='Naam, category aur dam zaroori hain.';render();return}
-    try{await addDoc(collection(db,'menu'),{n,h:$('#ah').value.trim()||n,c,p,d:'',img:$('#ai').value.trim(),on:true,o:menu.length});msg='';render()}catch(e){msg='Item nahi juda: '+e.code;render()}});
+  a.querySelectorAll('[data-o]').forEach(b=>b.onclick=async()=>{const o=orders.find(x=>x.id===b.dataset.o);if(!o||!NEXT[o.status])return;
+    const key=o.id+':'+o.status;if(sent.has(key))return;sent.add(key);
+    const nx=NEXT[o.status][0];try{await updateDoc(doc(db,'orders',o.id),{status:nx})}catch(e){sent.delete(key);msg='Status badal nahi paya (shayad customer ne cancel kar diya). ['+e.code+']';render();return}
+    if(nx==='done')for(const i of o.items){if(!MENU.some(m=>m.id===i.id))continue;try{await setDoc(doc(db,'menu',i.id),{sold:increment(i.q)},{merge:true})}catch(e){msg='Status badal gaya, par bikri ginti nahi judi: '+e.code;render()}}});
+  a.querySelectorAll('[data-tg]').forEach(b=>b.onclick=async()=>{const id=b.dataset.tg,on=(AV[id]||{}).on!==false;try{await setDoc(doc(db,'menu',id),{on:!on},{merge:true});merr=''}catch(e){merr='Badal nahi paya: '+e.code;render()}});
+  a.querySelectorAll('[data-cl]').forEach(b=>b.onclick=async()=>{try{await updateDoc(doc(db,'calls',b.dataset.cl),{status:'done'})}catch(e){msg='Waiter call band nahi hui: '+e.code;render()}});
 }
 render();
 </script>
